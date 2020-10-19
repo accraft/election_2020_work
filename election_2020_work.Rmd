@@ -1,0 +1,154 @@
+---
+title: "election_2020_work"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+`%notin%` <- Negate(`%in%`)
+```
+
+## Rerun 2016 Election With 2020 Demographics
+
+This is an analysis that attempts to "rerun" the 2016 election in 2020 factoring in only two changes to the electorate: 1) loss of voters due to mortality from 2016-2020 and 2) individuals between the ages of 14-17 in 2016 that entered the voting pool. It attemts to estimate the change in vote margin in the three tipping point states (Michigan, Pennsylvania, and Wisconsin) for these two factors by using a very simple set of assumptions:
+1. Once a voter casts a vote for/against Trump, they will continue to vote for/against Trump for the rest of their life.  
+2. The CNN exit polls in 2016 accurately recorded the breakdown of weights and vote share by age cohort. 
+3. The mortality rate by age cohort is orthoginal to turnout and candidate preference.   
+4. The voting population of newly eligible voters (those between the ages of 14-17 in the 2016 election) can be estimated using the size of the 18-29 age cohort multipled by 4/10. 
+5. The voting behavior of voters entering the electorite can be estimated using the voting behavior of voters 18-29. 
+
+Will use CNN exit poll data and CDC mortality statistics to estimate the change in vote share 
+
+###Check Data
+
+First step will be to estimate the final vote share using the exit poll data. It does *not* need to be exact, but it should be within 1-2% points of the final margin. Note that at all times the margin will be quoted as a percentage with a positive value indicating a percentage win by Trump, and a negative indicating a percentage win by Trump's opponent.
+```{r include=FALSE}
+#source: https://www.cnn.com/election/2016/results/exit-polls
+exit_poles = read_csv("/home/accraft/Projects/election_2020_work/raw_data/exit_polls_2016_MI_PA_WI.csv")
+
+#https://www.cdc.gov/nchs/data/nvsr/nvsr68/nvsr68_09-508.pdf #pg 24, Table 2. 
+cdc_mortality_stats = read_csv("/home/accraft/Projects/election_2020_work/raw_data/cdc_mortality_byage_MI_PA_WI.csv")
+
+#https://www.cdc.gov/nchs/data/nvsr/nvsr68/nvsr68_09-508.pdf #pg 24, Table 2. 
+actual_results_2016 = read_csv("/home/accraft/Projects/election_2020_work/raw_data/actual_results_2016.csv")
+
+#remove ages below 19
+cdc_mortality_stats_2 = cdc_mortality_stats %>% 
+  filter(Age_Group_Code %notin% c("1","1-4",'5-9','10-14')) %>%
+  mutate(min_age_range = as.numeric(str_sub(Age_Group_Code,1,2)),
+         max_age_range = ifelse(Age_Group_Code == '85',85,as.numeric(str_sub(Age_Group_Code,4,5))),
+         cohort_size = max_age_range - min_age_range + 1,
+         year_range = map2(min_age_range,max_age_range,seq)
+         ) %>%
+  unnest(year_range) %>%
+  mutate(exit_pole_buckets = case_when(between(year_range,20,31) ~ '18-29',
+                                       between(year_range,32,46) ~ '30-44',
+                                       between(year_range,47,67) ~ '45-64',
+                                       between(year_range,68,99) ~ '65 and older'),
+         pop_share = Population / cohort_size,
+         death_share = Deaths / cohort_size) 
+
+cdc_mortality_stats_3 = cdc_mortality_stats_2 %>%
+  group_by(State,exit_pole_buckets) %>%
+  summarize(population = sum(pop_share),
+            deaths = sum(death_share),
+            death_rate = sum(death_share)/sum(pop_share))
+
+exit_mortality_combined = inner_join(exit_poles,cdc_mortality_stats_3,by=c("Category" = "exit_pole_buckets","State" = "State")) %>%
+  filter(Table=="age_4_cohorts") %>%
+  mutate(new_wgt_deaths = (1-death_rate)^4 * Weight,
+         new_wgt_firsttimers = ifelse(Category == "18-29",Weight * 0.4,0) + Weight,
+         new_wgt_combined = new_wgt_firsttimers + new_wgt_deaths - Weight,
+         vote_margin = trump - clinton
+         ) %>%
+  group_by(State) %>%
+  mutate(new_wgt_deaths_pct = new_wgt_deaths / sum(new_wgt_deaths),
+         new_wgt_firsttimers_pct = new_wgt_firsttimers / sum(new_wgt_firsttimers),
+         new_wgt_combined_pct = new_wgt_combined/sum(new_wgt_combined)
+         )
+```
+```{r echo=FALSE}
+total_row <- exit_poles %>%
+  mutate(total_clinton = Weight * clinton,
+         total_trump = Weight * (trump + ifelse(is.na(johnson),0,other))) %>%
+  group_by(State,Table) %>%
+  summarize(total_clinton = sum(total_clinton),
+            total_trump = sum(total_trump)) %>%
+  mutate(margin = total_trump / (total_trump + total_clinton)) %>%
+  select(State,Table,margin)
+```
+
+To start, I pulled the CNN exit polls for the three tipping point Midwestern states by age cohort, shown below.
+```{r echo=FALSE}
+exit_pole_chart <- exit_poles %>%
+  filter(Table=="age_4_cohorts") %>%
+  mutate(margin = trump - clinton,
+         margin_adj = (trump + ifelse(is.na(johnson),0,other)) - clinton) %>%
+  select(State,Category,Weight,trump,clinton,johnson,stein,other,margin,margin_adj)
+knitr::kable(exit_pole_chart)
+```
+Taking the dot product of margin and weight gives the actual margin estimated by exit polls. This is compared to the actual margin on 2016 election night below. The results are relatively close, the furthest exit poll (WI) still only 0.01 off. Note the exit polls do not need to be particularly close because  analysis will calculate the percent change in margin based on the exit polls, and then apply that percent change to the actual margin. 
+```{r echo=FALSE}
+exit_pole_actual_compare_chart <- exit_pole_chart %>%
+  group_by(State) %>%
+  summarize("Margin From Exit Poll" = sum(margin*Weight))%>%
+  inner_join(actual_results_2016,by=c("State"="State")) %>%
+  mutate("Actual Margin" =  margin_pct/100) %>%
+  select(State,"Actual Margin","Margin From Exit Poll")
+knitr::kable(exit_pole_actual_compare_chart)
+```
+### Mortality Effect
+First I attempt to estimate the effect of total vote margin using changes in the voter population due to voter attrition due to mortality. While the absolute population of voters in 2016 alive in 2020 will be smaller, the difference in mortality rates by age group will result in different weights, thereby effecting the statewide margin. 
+
+The mortality rate by age cohort is estimated using CDC mortality statistics from 2017 by state. The age breakdown in the CDC the mortality data did not match the age breakdown of exit poll data, so a weighted average was used. Additionally, the mortality rate by age cohort is not static over time. For example, in 2019 the age range of voters originally in the 50-64 age cohort is actually 53-67. To keep the calculations simple, the midpoint of each age cohort was used. For example, voter attrition due to mortality for the 50-64 age cohort was calculated by assuming a constant annualized mortality rate of a 52-66 year age over the four year period. If the CDC mortality estimates assumed a 1% mortality rate for 52-66 year olds in 2017 and this age cohort had a 30% weight in the exit poll, total change in the weight for this age group would be calculated as $Weight*(1-MortalityRate)^4 = 0.300 * (1-0.01)^4 = 0.288$
+
+```{r echo=FALSE}
+exit_mortality_combined = inner_join(exit_poles,cdc_mortality_stats_3,by=c("Category" = "exit_pole_buckets","State" = "State")) %>%
+  filter(Table=="age_4_cohorts") %>%
+  mutate(new_wgt_deaths = (1-death_rate)^4 * Weight,
+         new_wgt_firsttimers = ifelse(Category == "18-29",Weight * 0.4,0) + Weight,
+         new_wgt_combined = new_wgt_firsttimers + new_wgt_deaths - Weight,
+         vote_margin = trump - clinton
+         ) %>%
+  group_by(State) %>%
+  mutate(new_wgt_deaths_pct = new_wgt_deaths / sum(new_wgt_deaths),
+         new_wgt_firsttimers_pct = new_wgt_firsttimers / sum(new_wgt_firsttimers),
+         new_wgt_combined_pct = new_wgt_combined/sum(new_wgt_combined)
+         )
+```
+
+
+### New Voter Effect
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r echo=FALSE}
+plot(pressure)
+
+
+   
+
+new_margin = exit_poles2 %>%
+  group_by(State) %>%
+  summarize(old_margin = sum(vote_margin * Weight) / sum(Weight),
+            new_margin = sum(vote_margin * new_weight) / sum(new_weight)
+            ) %>%
+  mutate(change_in_margin = old_margin - new_margin)
+
+final_table = inner_join(actual_results_2016,new_margin) %>%
+  transmute(State,
+            margin_2016 = margin_pct / 100,
+            change_due_to_demo = round(change_in_margin,4),
+            margin_2020 = round(margin_2016 - change_in_margin,4) )
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+### Sources
+CNN 2016 Exit Polls: https://www.cnn.com/election/2016/results/exit-polls
+CDC Mortality Statistics: https://wonder.cdc.gov/cmf-icd10.html
+2016 Actual Election Results: https://en.wikipedia.org/wiki/2016_United_States_presidential_election#Results_by_state
