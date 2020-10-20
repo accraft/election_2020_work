@@ -83,9 +83,8 @@ To start, I pulled the CNN exit polls for the three tipping point Midwestern sta
 ```{r echo=FALSE}
 exit_pole_chart <- exit_poles %>%
   filter(Table=="age_4_cohorts") %>%
-  mutate(margin = trump - clinton,
-         margin_adj = (trump + ifelse(is.na(johnson),0,other)) - clinton) %>%
-  select(State,Category,Weight,trump,clinton,johnson,stein,other,margin,margin_adj)
+  mutate(margin = trump - clinton) %>%
+  select(State,Category,Weight,trump,clinton,johnson,stein,other,margin)
 knitr::kable(exit_pole_chart)
 ```
 Taking the dot product of margin and weight gives the actual margin estimated by exit polls. This is compared to the actual margin on 2016 election night below. The results are relatively close, the furthest exit poll (WI) still only 0.01 off. Note the exit polls do not need to be particularly close because  analysis will calculate the percent change in margin based on the exit polls, and then apply that percent change to the actual margin. 
@@ -104,23 +103,39 @@ First I attempt to estimate the effect of total vote margin using changes in the
 The mortality rate by age cohort is estimated using CDC mortality statistics from 2017 by state. The age breakdown in the CDC the mortality data did not match the age breakdown of exit poll data, so a weighted average was used. Additionally, the mortality rate by age cohort is not static over time. For example, in 2019 the age range of voters originally in the 50-64 age cohort is actually 53-67. To keep the calculations simple, the midpoint of each age cohort was used. For example, voter attrition due to mortality for the 50-64 age cohort was calculated by assuming a constant annualized mortality rate of a 52-66 year age over the four year period. If the CDC mortality estimates assumed a 1% mortality rate for 52-66 year olds in 2017 and this age cohort had a 30% weight in the exit poll, total change in the weight for this age group would be calculated as $Weight*(1-MortalityRate)^4 = 0.300 * (1-0.01)^4 = 0.288$
 
 ```{r echo=FALSE}
-exit_mortality_combined = inner_join(exit_poles,cdc_mortality_stats_3,by=c("Category" = "exit_pole_buckets","State" = "State")) %>%
+exit_mortality = inner_join(exit_poles,cdc_mortality_stats_3,by=c("Category" = "exit_pole_buckets","State" = "State")) %>%
   filter(Table=="age_4_cohorts") %>%
-  mutate(new_wgt_deaths = (1-death_rate)^4 * Weight,
-         new_wgt_firsttimers = ifelse(Category == "18-29",Weight * 0.4,0) + Weight,
-         new_wgt_combined = new_wgt_firsttimers + new_wgt_deaths - Weight,
-         vote_margin = trump - clinton
+  mutate(new_wgt_deaths = round((1-death_rate)^4 * Weight,3),
+         margin = trump - clinton
          ) %>%
   group_by(State) %>%
-  mutate(new_wgt_deaths_pct = new_wgt_deaths / sum(new_wgt_deaths),
-         new_wgt_firsttimers_pct = new_wgt_firsttimers / sum(new_wgt_firsttimers),
-         new_wgt_combined_pct = new_wgt_combined/sum(new_wgt_combined)
-         )
+  mutate("Updated Weight" = new_wgt_deaths / sum(new_wgt_deaths)
+         ) %>%
+  select(State,Category,Weight,"Updated Weight",margin)
+knitr::kable(exit_mortality)
 ```
+Now looking at the combined effect on the change in marin and applying that same change in margin to the actual 2016 results
 
-
+```{r echo=FALSE}
+margin_change_mortality = exit_mortality %>%
+  group_by(State) %>%
+  summarize(original_margin = sum(Weight*margin),
+            margin_after_mort = sum(`Updated Weight`*margin)
+         ) %>%
+  inner_join(actual_results_2016,by=c("State"="State")) %>%
+  mutate("Change in Margin" = round(margin_after_mort - original_margin,4),
+         "Actual Margin" = margin_pct/100,
+         "Actual Margin After Mortality" = round(`Actual Margin` + `Change in Margin`,4),
+         "Original Exit Poll Margin" = round(original_margin,4),
+         "Exit Poll Margin After Mortality" = round(margin_after_mort,4) 
+         ) %>%
+  select(State,`Original Exit Poll Margin`
+         ,`Exit Poll Margin After Mortality`,`Change in Margin`
+         ,`Actual Margin`,`Actual Margin After Mortality`)
+knitr::kable(margin_change_mortality)
+```
 ### New Voter Effect
-
+Next I look at the effect of new voters, those between the ages of 14-17 in 2016, on an election run in 2020. This is a very straighforward calculation because I assume the same size 
 
 ## Including Plots
 
