@@ -17,13 +17,13 @@ library(scales)
 
 ## Methodology
 
-This is an analysis that attempts to "rerun" the 2016 election in 2020 factoring in only two changes to the electorate: 1) loss of voters due to mortality from 2016-2020 and 2) individuals between the ages of 14-17 in 2016 that entered the voting pool. It attemts to estimate the change in vote margin in the three tipping point states (Michigan, Pennsylvania, and Wisconsin) for these two factors by using a very simple set of assumptions:
+This is a simple election forecast model that attempts to "rerun" the 2016 election in 2020 factoring in only two changes to the electorate: 1) loss of voters due to mortality from 2016 to 2020 and 2) individuals between the ages of 14-17 in 2016 that entered the voting pool. It estimates the change in vote margin in four key tipping point states (Michigan, North Carolina, Pennsylvania, and Wisconsin) for these two factors by using a very simple set of assumptions:
 
 1. Once a voter casts a vote for/against Trump, they will continue to vote for/against Trump for the rest of their life.  
-2. The CNN exit polls in 2016 accurately recorded the breakdown of weights and vote share by age cohort.  
-3. The mortality rate by age cohort is orthoginal to turnout and candidate preference.   
-4. The voting population of newly eligible voters (those between the ages of 14-17 in the 2016 election) can be estimated using the size of the 18-29 age cohort multipled by 4/10.  
-5. The voting behavior of voters entering the electorite can be estimated using the voting behavior of voters 18-29.  
+2. CNN exit polls in 2016 accurately reflected the weights and vote share by age cohort.  
+3. The voter mortality rate is orthogonal to turnout and candidate preference within an age cohort.   
+4. The voting population of newly eligible voters (those between the ages of 14-17 in the 2016 election) can be estimated using the size of the 18-29 age cohort multiplied by 4/10.  
+5. Voting behavior of voters entering the electorate is the same as voting behavior of voters 18-29 in 2016.  
 
 This analysis will use CNN exit poll data and CDC mortality statistics to estimate the change in vote share.
 
@@ -107,7 +107,7 @@ kbl(exit_pole_actual_compare_chart) %>%
 ```
 
 ### Mortality Effect
-First I attempt to estimate the effect of total vote margin using changes in the voter population due to voter attrition due to mortality. While the absolute population of voters in 2016 alive in 2020 will be smaller, the difference in mortality rates by age group will result in different weights, thereby effecting the statewide margin. 
+First I attempt to estimate the effect of total vote margin using changes in the voter population due to voter attrition due to mortality. While the absolute population of voters in 2016 alive in 2020 will be smaller, the difference in mortality rates by age group will result in different weights, thereby affecting the statewide margin. 
 
 The mortality rate by age cohort is estimated using CDC mortality statistics from 2017 by state. The age breakdown in the CDC the mortality data did not match the age breakdown of exit poll data, so a weighted average was used. Additionally, the mortality rate by age cohort is not static over time. For example, in 2019 the age range of voters originally in the 50-64 age cohort is actually 53-67. To keep the calculations simple, the midpoint of each age cohort was used. For example, voter attrition due to mortality for the 50-64 age cohort was calculated by assuming a constant annualized mortality rate of a 52-66 year age over the four year period. If the CDC mortality estimates assumed a 1% mortality rate for 52-66 year olds in 2017 and this age cohort had a 30% weight in the exit poll, total change in the weight for this age group would be calculated as $Weight*(1-MortalityRate)^4 = 0.300 * (1-0.01)^4 = 0.288$
 
@@ -127,7 +127,7 @@ kbl(exit_mortality)  %>%
   kable_styling(full_width = F)
 ```
 
-Now looking at the combined effect on the change in margin and applying that same change in margin to the actual 2016 results
+Now looking at the combined effect on the change in margin and applying that same change in margin to the actual 2016 results.
 
 ```{r echo=FALSE}
 margin_change_mortality = exit_mortality %>%
@@ -151,7 +151,7 @@ kbl(margin_change_mortality) %>%
 ```
 
 ### New Voter Effect
-Next I look at the effect of new voters, those between the ages of 14-17 in 2016, on an election run in 2020. This is a very straighforward calculation because I assume the same size 
+Next I look at the effect of new voters, those between the ages of 14-17 in 2016, on an election run in 2020. This is a very straightforward calculation because I assume the per-year size and behavior of this new cohort is identical to the 18-29 cohort in the 2016 election. 
 
 ```{r echo=FALSE}
 margin_change_new = exit_poles %>%
