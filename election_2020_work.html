@@ -592,17 +592,17 @@ summary {
 
 <div id="methodology" class="section level2">
 <h2>Methodology</h2>
-<p>This is an analysis that attempts to “rerun” the 2016 election in 2020 factoring in only two changes to the electorate: 1) loss of voters due to mortality from 2016-2020 and 2) individuals between the ages of 14-17 in 2016 that entered the voting pool. It attemts to estimate the change in vote margin in the three tipping point states (Michigan, Pennsylvania, and Wisconsin) for these two factors by using a very simple set of assumptions:</p>
+<p>This is a simple election forecast model that attempts to “rerun” the 2016 election in 2020 factoring in only two changes to the electorate: 1) loss of voters due to mortality from 2016 to 2020 and 2) individuals between the ages of 14-17 in 2016 that entered the voting pool. It estimates the change in vote margin in four key tipping point states (Michigan, North Carolina, Pennsylvania, and Wisconsin) for these two factors by using a very simple set of assumptions:</p>
 <ol style="list-style-type: decimal">
 <li>Once a voter casts a vote for/against Trump, they will continue to vote for/against Trump for the rest of their life.<br />
 </li>
-<li>The CNN exit polls in 2016 accurately recorded the breakdown of weights and vote share by age cohort.<br />
+<li>CNN exit polls in 2016 accurately reflected the weights and vote share by age cohort.<br />
 </li>
-<li>The mortality rate by age cohort is orthoginal to turnout and candidate preference.<br />
+<li>The voter mortality rate is orthogonal to turnout and candidate preference within an age cohort.<br />
 </li>
-<li>The voting population of newly eligible voters (those between the ages of 14-17 in the 2016 election) can be estimated using the size of the 18-29 age cohort multipled by 4/10.<br />
+<li>The voting population of newly eligible voters (those between the ages of 14-17 in the 2016 election) can be estimated using the size of the 18-29 age cohort multiplied by 4/10.<br />
 </li>
-<li>The voting behavior of voters entering the electorite can be estimated using the voting behavior of voters 18-29.</li>
+<li>Voting behavior of voters entering the electorate is the same as voting behavior of voters 18-29 in 2016.</li>
 </ol>
 <p>This analysis will use CNN exit poll data and CDC mortality statistics to estimate the change in vote share.</p>
 <div id="check-data" class="section level3">
@@ -1173,7 +1173,7 @@ WI
 </div>
 <div id="mortality-effect" class="section level3">
 <h3>Mortality Effect</h3>
-<p>First I attempt to estimate the effect of total vote margin using changes in the voter population due to voter attrition due to mortality. While the absolute population of voters in 2016 alive in 2020 will be smaller, the difference in mortality rates by age group will result in different weights, thereby effecting the statewide margin.</p>
+<p>First I attempt to estimate the effect of total vote margin using changes in the voter population due to voter attrition due to mortality. While the absolute population of voters in 2016 alive in 2020 will be smaller, the difference in mortality rates by age group will result in different weights, thereby affecting the statewide margin.</p>
 <p>The mortality rate by age cohort is estimated using CDC mortality statistics from 2017 by state. The age breakdown in the CDC the mortality data did not match the age breakdown of exit poll data, so a weighted average was used. Additionally, the mortality rate by age cohort is not static over time. For example, in 2019 the age range of voters originally in the 50-64 age cohort is actually 53-67. To keep the calculations simple, the midpoint of each age cohort was used. For example, voter attrition due to mortality for the 50-64 age cohort was calculated by assuming a constant annualized mortality rate of a 52-66 year age over the four year period. If the CDC mortality estimates assumed a 1% mortality rate for 52-66 year olds in 2017 and this age cohort had a 30% weight in the exit poll, total change in the weight for this age group would be calculated as <span class="math inline">\(Weight*(1-MortalityRate)^4 = 0.300 * (1-0.01)^4 = 0.288\)</span></p>
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
@@ -1470,7 +1470,7 @@ NC
 </tr>
 </tbody>
 </table>
-<p>Now looking at the combined effect on the change in margin and applying that same change in margin to the actual 2016 results</p>
+<p>Now looking at the combined effect on the change in margin and applying that same change in margin to the actual 2016 results.</p>
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -1580,7 +1580,7 @@ WI
 </div>
 <div id="new-voter-effect" class="section level3">
 <h3>New Voter Effect</h3>
-<p>Next I look at the effect of new voters, those between the ages of 14-17 in 2016, on an election run in 2020. This is a very straighforward calculation because I assume the same size</p>
+<p>Next I look at the effect of new voters, those between the ages of 14-17 in 2016, on an election run in 2020. This is a very straightforward calculation because I assume the per-year size and behavior of this new cohort is identical to the 18-29 cohort in the 2016 election.</p>
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -1688,9 +1688,8 @@ WI
 </tbody>
 </table>
 </div>
-</div>
-<div id="final-predictions" class="section level2">
-<h2>Final Predictions</h2>
+<div id="final-predictions" class="section level3">
+<h3>Final Predictions</h3>
 <p>Combining these two sets of effects yields the following results.</p>
 <table class=" lightable-material-dark" style="font-family: &quot;Source Sans Pro&quot;, helvetica, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
@@ -1783,6 +1782,7 @@ WI
 </tr>
 </tbody>
 </table>
+</div>
 <div id="sources" class="section level3">
 <h3>Sources</h3>
 <p>CNN 2016 Exit Polls: <a href="https://www.cnn.com/election/2016/results/exit-polls" class="uri">https://www.cnn.com/election/2016/results/exit-polls</a><br />
